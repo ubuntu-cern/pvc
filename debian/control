@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: pvc
 Architecture: all
-Depends: dash | bash | ksh, coreutils, diff, sed
+Depends: dash | bash | ksh, hostname, coreutils, diff, sed
 Description: Poor man's configuration management.
  Minimal configuration management utility to track changes.  Provides a
  convenient way for multiple system administrators to keep a log of changes

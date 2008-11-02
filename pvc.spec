@@ -6,7 +6,7 @@ Packager: KELEMEN Peter <Peter.Kelemen@gmail.com>
 License: GPL
 Group: Applications/System
 
-Requires: bash, coreutils, diff, sed
+Requires: bash, net-tools, coreutils, diff, sed
 
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
