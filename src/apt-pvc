@@ -1,0 +1,28 @@
+#!/bin/sh
+# apt-pvc: v1.0 2008/11/02 KELEMEN Peter <Peter.Kelemen@gmail.com>
+# Wrapper around apt-get to log actions using pvc.
+# Original idea by BURJAN Gabor <buga@elte.hu>.
+# Implementation by NAGY Andras <nagya@inf.elte.hu>.
+# Modified by KELEMEN Peter <Peter.Kelemen@gmail.com>.
+
+OUT=$(mktemp)
+LOG=$(mktemp)
+trap "rm -f $OUT $LOG" 0
+
+echo + apt-get -s "$@"
+apt-get -s "$@" | grep '^[A-Z][a-z][a-z][a-z] ' | tee $OUT
+echo + apt-get "$@"
+if apt-get "$@"
+then
+	echo "	apt-get" "$@" >$LOG
+	sed 's/^/		/' $OUT >>$LOG
+	CMD="pvc -f $LOG log"
+	echo "apt-pvc: enter additional arguments for changelog"
+	if [ -n "$BASH_VERSION" ]; then
+		read -p "$ $CMD " -e
+	else
+		read -p "$ $CMD "
+	fi
+	CMD="$CMD $REPLY"
+	$CMD
+fi

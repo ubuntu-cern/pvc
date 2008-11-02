@@ -1,0 +1,20 @@
+<todo version="0.1.19">
+    <note priority="medium" time="1225581688">
+        viewlog
+    </note>
+    <note priority="medium" time="1225581694">
+        revert
+    </note>
+    <note priority="medium" time="1225581705">
+        -r &lt;timestamp&gt;
+    </note>
+    <note priority="medium" time="1225581713">
+        editlog, lockolással
+    </note>
+    <note priority="medium" time="1225581752">
+        MOD_EDIT_WAIT: editor meghivasa elott var RETURN-re, lehessen olvasni a korabbi uzeneteket
+    </note>
+    <note priority="medium" time="1225581761">
+        fetch_file_timestamp LANG=C
+    </note>
+</todo>

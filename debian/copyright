@@ -1,0 +1,19 @@
+This package was debianized by KELEMEN Peter <Peter.Kelemen@gmail.com> on
+Sun, 02 Nov 2008 01:29:18 +0100.
+
+Upstream Author(s): 
+
+    NAGY Andras <nagya@inf.elte.hu>
+    KELEMEN Peter <fuji@elte.hu>
+
+Copyright: 
+
+    Copyright (C) 2001 KELEMEN Peter
+    Copyright (C) 2002 NAGY Andras
+
+License:
+
+    GPL v2
+
+The Debian packaging is (C) 2008, KELEMEN Peter <Peter.Kelemen@gmail.com> and
+is licensed under the GPL, see `/usr/share/common-licenses/GPL'.

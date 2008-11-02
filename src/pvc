@@ -1,0 +1,634 @@
+#!/bin/sh
+# pvc: v1.0 2008/11/02 KELEMEN Peter <Peter.Kelemen@gmail.com>
+# mod: v0.06 2001/01/31 KELEMEN Peter <fuji@elte.hu>
+# mcvs: v0.01 2001/03/20 NAGY Andras <nagya@inf.elte.hu>
+# $Id: mcvs,v 1.5 2002/02/05 21:04:40 nagya Exp $
+# Poor man's configuration management.
+# Original idea by FROHNER Akos <szamcsi@elte.hu>.
+# Suggestions by GOMBAS Gabor <gombasg@inf.elte.hu>,
+#		 NAGY Andras <nagya@inf.elte.hu>.
+
+# Environment:
+# MOD_BASE	: if defined, it's used as hierarchy prefix (default: /root/mod)
+# MOD_EDIT	: if defined, file is opened for editing.
+# MOD_DIFF_SHOW	: if defined, show diff after successful editing.
+# MOD_DIFF_OPTS	: if defined, show diff with these options.
+# MOD_LOG	: if defined, ask for log message on commit
+# MOD_CHANGELOG_STYLE : "edit", "append" or "appendview"
+#		  ("appendview" is only to be used with VIM)
+# EDITOR	: usual stuff.
+
+# History:
+# 2001/01/03	Fuji		AIX/Solaris ACL support.
+# 2001/01/29	Szamcsi		Fix "/" pollution w/ACL files.
+# 2001/03/19	nagya		Fix HOSTNAME vs NODE bug
+#				Fix /* vs */* bug
+#				Integrate mcvs and changelog
+# 2001/04/06	Fuji		cmd_mod saves orig upon first mod
+# 2001/04/06	Fuji		portable file timestamp fetcher
+# 2001/11/18	nagya		Introduce MOD_CHANGELOG_STYLE.
+# 2002/02/05	nagya		Add -f option.
+# 2008/11/02	Fuji		Renamed to pvc (clashed with MetaCVS).
+
+PATH=/usr/bin:/bin
+
+# Constants.
+SUNOS="SunOS"
+AIX="AIX"
+
+# Defaults.
+DEFAULT_MOD_BASE=/root/mod
+DEFAULT_EDITOR=vi
+if [ -z "$MOD_CHANGELOG_STYLE" ]
+then
+	case "$EDITOR" in
+		*vim) MOD_CHANGELOG_STYLE=appendview ;;
+		*)    MOD_CHANGELOG_STYLE=append ;;
+	esac
+fi
+
+######################################################################
+### require
+### Parameters: requested capabilities; valid values are:
+###	user os tmp node base mkdirhier acl time edit
+######################################################################
+require () {
+	#local cap
+	for cap in "$@"
+	do
+		if eval test -z \"\$MOD_HAVE_$cap\"
+		then
+			provide_$cap "$@"
+			eval "MOD_HAVE_$cap"=1
+		fi
+	done
+}
+
+######################################################################
+### user -- User name (for logging)
+### Sets USER
+######################################################################
+provide_user () {
+	if [ ! -z "$OPT_USER" ]
+	then
+		USER="$OPT_USER"
+	elif [ ! -z "$SUDO_USER" ]
+	then
+		USER="$SUDO_USER"
+	fi
+
+	if [ -z "$USER" -o "$USER" = "root" ]
+	then
+		echo "E: Can't determine user name."
+		exit 1
+	fi
+}
+
+######################################################################
+### os -- Operating system type
+### Sets OS
+######################################################################
+provide_os () {
+	OS=`uname`
+}
+
+######################################################################
+### tmp -- Temporary directory
+### Sets TMPDIR
+######################################################################
+provide_tmp () {
+	if [ -z "$TMPDIR" ]; then
+		if [ -d "$HOME/tmp" ]; then
+			TMPDIR=$HOME/tmp
+		else
+			TMPDIR=/tmp
+		fi
+	fi
+	TMPDIR=$TMPDIR/pvc.$$
+	if mkdir -m 700 $TMPDIR
+	then
+		# ksh would execute this at the end of the function
+		#trap "rmdir $TMPDIR" 0
+		MOD_TMP_TRAP=1
+	else
+		echo "E: Cannot create \$TMPDIR ($TMPDIR)"
+		exit 1
+	fi
+}
+trap '[ -z "$MOD_TMP_TRAP" ] || rmdir $TMPDIR' 0
+
+######################################################################
+### node -- Determine name of this node we're running on.
+### Sets NODE
+######################################################################
+provide_node () {
+	if [ ! -z "$OPT_NODE" ]; then
+		NODE="$OPT_NODE"
+	elif [ ! -z "$HOSTNAME" ]; then
+		NODE=$HOSTNAME
+	else
+		NODE=`hostname`
+	fi
+	if [ -z "$NODE" ]; then
+		NODE=`uname -n`
+	fi
+	if [ -z "$NODE" ]; then
+		echo "E: Can't determine hostname."
+		exit 1
+	fi
+}
+
+######################################################################
+### base -- Base directory
+### Uses DEFAULT_MOD_BASE, MOD_BASE
+### Sets BASE
+######################################################################
+provide_base () {
+	require node
+
+	if [ -z "$MOD_BASE" ]; then
+		BASE=$DEFAULT_MOD_BASE
+	else
+		BASE=$MOD_BASE
+	fi
+	if [ ! -z "$NODE" ]; then
+		BASE=$BASE/$NODE
+	fi
+}
+
+######################################################################
+### mkdirhier
+### Sets MKDIRHIER
+######################################################################
+provide_mkdirhier () {
+	MKDIRHIER=`which mkdirhier`
+	## if [ -z "$MKDIRHIER" ]; then
+	if [ $? = 0 -a ! -z "$MKDIRHIER" ]; then
+		echo "N: Using mkdirhier(1) as '$MKDIRHIER'."
+	else
+		MKDIRHIER="mkdir -p"
+	fi
+}
+	
+######################################################################
+### acl -- ACL support
+### Sets ACLGET{,OPTS}, ACLPUT{,OPTS}, ACL
+######################################################################
+provide_acl () {
+	require os
+
+	case "$OS" in
+		$AIX)
+			ACLGET=/bin/aclget
+			ACLGETOPTS="-o"
+			ACLPUT=/bin/aclput
+			ACLPUTOPTS="-i"
+			;;
+		$SUNOS)
+			ACLGET=/usr/bin/getfacl
+			ACLGETOPTS=""
+			ACLPUT=/usr/bin/setfacl
+			ACLPUTOPTS="-f"
+			;;
+		*)
+			ACLGET='NO-ACL-SUPPORT'
+			ACLPUT='NO-ACL-SUPPORT'
+			ACLGETOPTS=""
+			ACLPUTOPTS=""
+			;;
+	esac
+	
+	if [ -x $ACLGET -a -x $ACLPUT ]; then
+		ACL=yes
+		echo "N: Using $OS ACL support."
+	else
+		ACL=no
+		echo "W: ACL support disabled ($ACLGET)."
+	fi
+}
+
+######################################################################
+### time -- Determine current timestamp (like 20000530T183559).
+### Sets TIME, LOGTIME
+######################################################################
+## TIME=`date +%Y-%m-%d.%H:%M`
+provide_time () {
+	TIME=`date +%Y%m%dT%H%M%S`
+	LOGTIME=`date "+%Y-%m-%d %X %Z"`
+	if [ -z "$TIME" ]; then
+		echo "E: Can't determine current time."
+		exit 2
+	fi
+}
+
+######################################################################
+### fetch_file_time -- Determine timestamp of a file in a portable way.
+### Sets FILE_TIMESTAMP
+######################################################################
+fetch_file_timestamp () {
+	require os
+	if [ -z "$1" ]; then
+		echo "E: Which file's timestamp interests you?"
+		exit 2
+	fi
+	if [ "$OS" = "Linux" ]; then
+		echo "N: Fetching timestamp using date(1) -r option (Linux)."
+		FILE_TIMESTAMP=`date -r $1 +%Y%m%dT%H%M%S`
+		return 0
+	fi
+	echo "N: Fetching timestamp."
+	# Extract ls(1) timestamp string,
+	# break-by-whitespace,
+	# convert month name to number,
+	# zero-pad single digits,
+	# concatenate.
+	_D=`
+		ls -lad $1 | \
+		sed 's/^.*[0-9][0-9]*  *\([A-Z][a-z][a-z]  *[0-9]*[0-9]  *[0-9][0-9]:*[0-9][0-9]\)  *[^ ][^ ]*$/\1/' | \
+		tr ' ' '\n' | \
+		sed '/^$/d;
+			s/Jan/1/;
+			s/Feb/2/;
+			s/Mar/3/;
+			s/Apr/4/;
+			s/May/5/;
+			s/Jun/6/;
+			s/Jul/7/;
+			s/Aug/8/;
+			s/Sep/9/;
+			s/Oct/10/;
+			s/Nov/11/;
+			s/Dec/12/;
+			s/^\([0-9]\)$/0\1/
+		' | tr '\n' ' '
+	`
+	# If timestamp is within 6 months (no year information), prepend it,
+	# otherwise append zero time-specification.
+	if echo $_D | grep : >/dev/null; then
+		echo near
+		_F=`echo $_D | sed 's/^\(.*\) \(.*\) \(.*\)$/X\1\2T\300/; s/://'`
+		_Y=`date +%Y`
+		_F=`echo $_D | sed "s/X/$_Y/"`
+	else
+		echo far
+		_F=`echo $_D | sed 's/^\(.*\) \(.*\) \(.*\)$/\3\1\2T000000/'`
+	fi
+	FILE_TIMESTAMP=$_F
+}
+
+######################################################################
+### edit -- Edit a file by preserving ACLs
+### Uses DEFAULT_EDITOR
+### Sets EDITOR
+######################################################################
+provide_edit () {
+	if [ -z "$EDITOR" ]; then
+		echo "W: \$EDITOR set to $DEFAULT_EDITOR."
+		EDITOR=$DEFAULT_EDITOR
+	fi
+	## This fails if $EDITOR is not an absolute path
+	##if [ ! -x "$EDITOR" ]; then
+	##	echo "E: \$EDITOR is not executable ($EDITOR)."
+	##	exit 1
+	##fi
+}
+	
+edit () {
+	require edit tmp acl
+
+	#local EFILE ACLFILE
+	EFILE="$1"
+	ACLFILE=$TMPDIR/edit-acl
+
+	# Save ACLs.
+	if [ "$ACL" = "yes" ]; then
+		if [ ! -z "$ACLGETOPTS" ]; then
+			CMD="$ACLGET $ACLGETOPTS $ACLFILE $EFILE"
+		else
+			CMD="$ACLGET $EFILE > $ACLFILE"
+		fi
+		echo "+ $CMD"
+		eval "$CMD " # 2>/dev/null"
+	fi
+
+	$EDITOR "$EFILE"
+
+	# Restore ACLs, if any.
+	if [ "$ACL" = "yes" -a -f $ACLFILE ]; then
+		if [ ! -z "$ACLPUTOPTS" ]; then
+			CMD="$ACLPUT $ACLPUTOPTS $ACLFILE $EFILE"
+		else
+			CMD="$ACLPUT $EFILE < $ACLFILE"
+		fi
+		echo "+ $CMD"
+		eval "$CMD"
+		CMD="rm -f $ACLFILE"
+		echo "+ $CMD"
+		$CMD > /dev/null 2>&1
+	fi
+}
+
+# Edit, but not care about ACLs
+edit_light () {
+	require edit
+
+	$EDITOR "$1"
+}
+
+######################################################################
+### canon -- Determine absolute filename to be processed.
+### Parameter: file name, as entered by the user
+### Sets PARAM, FILE, DIR, ODIR
+######################################################################
+canon () {
+	require os base
+
+	PARAM="$1"
+	if [ ! -r "$PARAM" ]; then
+		echo "E: $PARAM is not readable."
+		exit 3
+	fi
+	
+	# ===== Traverse symbolic link chain. =====
+	# For more thorough documentation, contact the author and ask him about
+	# Portable Symbolic Link Expander.
+	#local LINK_TEST_OPTION MAXLINKS LINK LINK_COUNT LINK_TARGET
+	if [ "$OS" = $SUNOS ]; then
+		LINK_TEST_OPTION="-h"
+	else
+		LINK_TEST_OPTION="-L"
+	fi
+	if [ $LINK_TEST_OPTION $PARAM ]; then
+		MAXLINKS=20
+		echo "N: Traversing symbolic link chain ($PARAM)..."
+		LINK=$PARAM
+		LINK_COUNT=0
+		while [ $LINK_TEST_OPTION $LINK ]; do
+			if [ $LINK_COUNT -ge $MAXLINKS ]; then
+				echo "Maximum link count ($MAXLINKS) exceeded."
+				exit 1
+			else
+				LINK_COUNT=`expr $LINK_COUNT + 1`
+			fi
+			LINK_TARGET=`ls -ld $LINK | sed 's/^.*->[ ]*\([^ ][^ ]*\)$/\1/'`
+			if echo $LINK | grep / > /dev/null; then
+				## DIR=`echo $LINK | sed 's/^\(.*\)\/[^/][^/]*$/\1/'`
+				DIR=`dirname $LINK`
+				LINK=$DIR/$LINK_TARGET
+			else
+				LINK=$LINK_TARGET
+			fi
+			LINK=`echo $LINK | sed 's/^.*\/\//\//'`
+			echo "N: -> $LINK"
+		done
+		if [ -f $LINK ]; then
+			## DIR=`echo $LINK | sed 's/^\(.*\)\/[^/][^/]*$/\1/'`
+			DIR=`dirname $LINK`
+			## FILE=`echo $LINK | sed 's/^.*\/\([^/][^/]*\)$/\1/'`
+			FILE=`basename $LINK`
+			if echo $LINK | grep / > /dev/null; then
+				OLDPWD=`pwd`	# Trick (tm)
+				cd $DIR && PARAM=`pwd`/$FILE
+			else
+				PARAM=$FILE
+			fi
+		else
+			echo "E: $LINK is not a file."
+			exit 1
+		fi
+	else
+		# Do nothing, since the parameter supplied was not a symbolic link.
+		echo "N: $PARAM is a normal file."
+	fi
+	# =====
+	
+	case "$PARAM" in
+		*/*)
+			DIR=`dirname $PARAM`
+			cd $DIR && DIR=`pwd` && cd $OLDPWD
+			FILE=`basename $PARAM`
+			;;
+		*)
+			DIR=`pwd`
+			FILE=$PARAM
+			;;
+	esac
+	
+	# Compute saved filename.
+	ODIR="$DIR"
+	DIR="$BASE$DIR"
+}
+
+
+######################################################################
+### Commands
+######################################################################
+cmd_import () {
+	require time
+	fetch_file_timestamp $PARAM
+	if [ ! -e $DIR/$FILE-LAST ]; then 
+		echo "N: Importing file."
+		__TIME=$TIME
+		TIME=$FILE_TIMESTAMP
+		cmd_commit
+		TIME=$__TIME
+	else
+		echo "W: Attempting to import an already tracked file."
+	fi
+}
+
+cmd_commit () {
+	require mkdirhier time
+
+	CMD="diff $MOD_DIFF_OPTS $DIR/$FILE-LAST $PARAM"
+	echo "+ $CMD"
+	$CMD > /dev/null 2>&1
+	# User _really_ modified the file?
+	if [ $? = 0 ]; then
+		echo "N: No changes."
+	else
+		# Create directory hiearchy...
+		CMD="$MKDIRHIER $DIR"
+		echo "+ $CMD"
+		$CMD
+
+		# ...and save the file.
+		CMD="cp -p $PARAM $DIR/$FILE-$TIME"
+		echo "+ $CMD"
+		$CMD
+
+		# link to most recent version
+		echo "N: Creating link to most recent version."
+		CMD="ln -sf $FILE-$TIME $DIR/$FILE-LAST"
+		echo "+ $CMD"
+		$CMD
+
+		# logging?
+		[ -z "$MOD_LOG" ] || cmd_log "$ODIR/$FILE"
+	fi
+}
+
+cmd_diff () {
+	CMD="diff $MOD_DIFF_OPTS $DIR/$FILE-LAST $PARAM"
+	echo "+ $CMD"
+	$CMD
+}
+
+cmd_edit () {
+	edit "$PARAM"
+}
+
+cmd_mod () {
+	cmd_import
+	[ -z "$MOD_EDIT" ] || cmd_edit
+	[ -z "$MOD_DIFF_SHOW" -a -z "$MOD_SHOW_DIFF" ] || cmd_diff
+	cmd_commit
+}
+
+cmd_log () {
+	require tmp edit time user node
+
+	#local TMPLOG LOG LOCK
+	TMPLOG=$TMPDIR/log
+	LOG=/root/$NODE.changelog
+	LOCK=$LOG.lock
+	
+	# Set up log message prefix
+	echo "$LOGTIME --> $USER" >> $TMPLOG
+	[ -z "$1" ] || echo "	$1:" >> $TMPLOG
+	[ -z "$OPT_FILE" ] || cat "$OPT_FILE" >> $TMPLOG
+	
+	# Get log message before locking, if appropriate
+	if [ "$MOD_CHANGELOG_STYLE" = "appendview" ]
+	then
+		$EDITOR -c '$' -c 'winc w' -c '$' -o $LOG $TMPLOG
+	elif [ "$MOD_CHANGELOG_STYLE" = "append" ]
+	then
+		$EDITOR + $TMPLOG
+	fi
+
+	# Lock the main log file
+	if [ -f "$LOCK" ]
+	then
+		if [ -s "$LOCK" ]
+		then
+			echo "E: Acquired old-style log-lock found."
+			exit 1
+		else
+			echo "W: Old-style log-lock found; removing."
+			CMD="rm -f $LOCK"
+			echo "+ $CMD"
+			$CMD
+		fi
+	fi
+
+	while
+		CMD="ln -s $USER $LOCK"
+		echo "+ $CMD"
+		$CMD
+		[ $? -ne 0 ]
+	do
+		echo "N: Waiting for $LOCK..."
+		sleep 1
+	done
+
+	CMD="chmod u+w $LOG"
+	echo "+ $CMD"
+	$CMD
+
+	# Append log
+	if [ ! -f $LOG ]; then
+	        echo "# start on $LOGTIME" > $LOG
+	fi
+	echo >> $LOG
+	CMD="cat $TMPLOG >> $LOG"
+	echo "+ $CMD"
+	eval $CMD
+
+	# Edit main log if appropriate
+	if [ "$MOD_CHANGELOG_STYLE" = "edit" ]
+	then
+		$EDITOR + $LOG
+	fi
+
+	# Unlock the main log file
+	CMD="chmod a-w $LOG"
+	echo "+ $CMD"
+	$CMD
+	
+	CMD="rm -f $LOCK"
+	echo "+ $CMD"
+	$CMD
+
+	# Cleanup
+	CMD="rm -f $TMPLOG"
+	echo "+ $CMD"
+	$CMD
+}
+	
+cmd_help () {
+	echo "Usage: pvc [<options>] <command> [<parameters>]"
+	echo "Commands:"
+	echo "	commit	<file>"
+	echo "	diff	<file>"
+	echo "	edit	<file>"
+	echo "	mod	<file>"
+	echo "	log	[<user>]"
+	echo "	help"
+	echo "Options:"
+	echo "	-u <user>	Specify user name for logging."
+	echo "	-h <node>	Specify host name."
+	echo "	-e		mod only; open the file for editing (MOD_EDIT)."
+	echo "	-d		mod only; show diff (MOD_DIFF_SHOW)."
+	echo "	-l		Ask for log message on commit (MOD_LOG)."
+	echo "	-f <file>	log only; append file to log message before editing."
+}
+
+
+######################################################################
+### Main
+######################################################################
+SELF=`basename $0`
+COMMAND="$SELF"
+
+while getopts u:h:edlf: OPT
+do
+	case $OPT in
+		u) OPT_USER="$OPTARG" ;;
+		h) OPT_NODE="$OPTARG" ;;
+		e) MOD_EDIT=1 ;;
+		d) MOD_DIFF_SHOW=1 ;;
+		l) MOD_LOG=1 ;;
+		f) OPT_FILE="$OPTARG" ;;
+		?) cmd_help; exit 1 ;;
+	esac
+done
+shift `expr $OPTIND - 1`
+
+if [ "$SELF" = "pvc" ]
+then
+	COMMAND="$1"
+	shift 2>/dev/null
+fi
+
+case "$COMMAND" in
+	commit|diff|edit|mod|import)
+		canon "$1"
+		cmd_$COMMAND
+		;;
+
+	changelog|log)
+		[ -z "$1" ] || OPT_USER="$1"
+		cmd_log
+		;;
+
+	help)
+		cmd_$COMMAND
+		;;
+
+	*)
+		cmd_help
+		;;
+esac
+
+# End of file.

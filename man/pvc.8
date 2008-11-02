@@ -1,0 +1,145 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" First parameter, NAME, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH PVC 8 "November  2, 2008"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+pvc, mod, changelog \- poor man's version control
+.SH SYNOPSIS
+.B pvc
+.RI [ options ] " command " [ parameters ]
+.SH DESCRIPTION
+
+.B pvc
+(formerly known as \fBmcvs\fP) is a poor man's configuration
+management utility.  It helps multiple system administrators
+to keep a log of changes (a.k.a. \fIchangelog\fP) and track
+modifications of configuration files easily.
+
+.SH COMMANDS
+.TP
+.B import \fIfile\fP
+Store initial revision of \fIfile\fP.
+
+.TP
+.B commit \fIfile\fP
+Store a new revision of \fIfile\fP.
+
+.TP
+.B mod \fIfile\fP
+Shorthand for \fBimport\fP followed by \fBedit\fP (\fBdiff\fP) and
+\fBcommit\fP.
+
+.TP
+.B diff \fIfile\fP
+Show diff between last committed revision and actual contents of
+\fIfile\fP.
+
+.TP
+.B edit \fIfile\fP
+Edit \fIfile\fP (potentially restoring ACLs afterwards).
+
+.TP
+\fBlog\fP [\fIuser\fP], \fBchangelog\fP [\fIuser\fP]
+Add a new entry to the changelog.
+
+.TP
+.B help
+Display summary of commands and options.
+
+.SH OPTIONS
+
+.TP
+.B \-u \fIuser\fP
+Specify user name for logging.
+
+.TP
+.B \-h \fInode\fP
+Specify host name.
+
+.TP
+.B \-e
+(\fBmod\fP only) Open the file for editing (MOD_EDIT).
+
+.TP
+.B \-d
+(\fBmod\fP only) Show diff after editing (MOD_DIFF_SHOW).
+
+.TP
+.B \-l
+Ask for log message on commit (MOD_LOG).
+
+.TP
+.B \-f \fIfile\fP
+(\fBchangelog\fP only) Append file to log message before editing.
+
+.SH ENVIRONMENT
+
+.TP
+.B MOD_BASE
+Hierarchy prefix of tracked files (default: \fB/root/mod\fP).
+
+.TP
+.B MOD_EDIT
+If defined, files are opened for edit with $EDITOR.
+
+.TP
+.B MOD_DIFF_SHOW
+If defined, differences will be shown with \fBdiff\fP after a successful
+edit.
+
+.TP
+.B MOD_DIFF_OPTS
+Options to be passed to \fBdiff\fP.
+
+.TP
+.B MOD_LOG
+If defined, ask for log message on commit.
+
+.TP
+.B MOD_CHANGELOG_STYLE
+"edit", "append" or "appendview" (the latter is only to be used with
+\fBvim\fP).
+
+.TP
+.B EDITOR
+Your favourite text editor to be invoked for editing.
+
+.SH FILES
+
+.TP
+.B /root/mod/\fInode\fP
+Directory tree mimicking the layout of tracked files on \fInode\fP.
+
+.SH SEE ALSO
+.BR pvc-report (8),
+.BR root-gpg-mailer (8),
+.BR diff (1),
+.BR vim (1).
+
+.SH HISTORY
+In 1999, \fBsulog\fP, the original tool for logging changes to a system was
+written by FROHNER Akos. In 2001, it was renamed to \fBchangelog\fP, and
+the \fBmod\fP tool for tracking file modifications was implemented by
+KELEMEN Peter.  Later on the two were unified in \fBmcvs\fP by NAGY Andras.
+In 2008, the suite was renamed to \fBpvc\fP in order to avoid package
+naming clash with Meta-CVS.
+
+.SH AUTHOR
+\fBmcvs\fP was written by NAGY Andras <nagya@inf.elte.hu>.
+.PP
+This manual page was written by KELEMEN Peter <Peter.Kelemen@gmail.com>.
+.\" vim: syntax=nroff
+.\" End of file.
