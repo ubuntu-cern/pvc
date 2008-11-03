@@ -1,3 +1,9 @@
+pvc (1.1-1) hardy intrepid; urgency=low
+
+  * Bump version number.
+
+ -- KELEMEN Péter <Peter.Kelemen@gmail.com>  Mon, 03 Nov 2008 04:47:17 +0100
+
 pvc (1.0-2) hardy intrepid; urgency=low
 
   * Add missing changelog(8) and mod(8) symlinks.
