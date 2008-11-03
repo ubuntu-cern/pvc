@@ -3,19 +3,16 @@ Section: admin
 Priority: extra
 Maintainer: KELEMEN Peter <Peter.Kelemen@gmail.com>
 Build-Depends: debhelper (>= 5)
-Standards-Version: 3.7.2
+Standards-Version: 3.7.3
 
 Package: pvc
 Architecture: all
-Depends: dash | bash | ksh, hostname, coreutils, diff, sed
-Description: Poor man's configuration management.
+Description: Poor man's version control for system administration
  Minimal configuration management utility to track changes.  Provides a
  convenient way for multiple system administrators to keep a log of changes
  and modified files.
  
 Package: apt-pvc
 Architecture: all
-Depends: mktemp, pvc, apt
-Suggests: bash
-Description: Wrapper around apt-get to log actions using pvc.
- Wrapper around apt-get to log actions using pvc.
+Description: Wrapper around apt-get to log actions using pvc
+ Easy logging of package changes with pvc.

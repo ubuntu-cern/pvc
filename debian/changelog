@@ -1,4 +1,11 @@
-pvc (1.0-1) hardy; urgency=low
+pvc (1.0-2) hardy intrepid; urgency=low
+
+  * Add missing changelog(8) and mod(8) symlinks.
+  * Add apt-pvc.8 manpage.
+
+ -- KELEMEN Péter <Peter.Kelemen@gmail.com>  Mon, 03 Nov 2008 04:33:39 +0100
+
+pvc (1.0-1) hardy intrepid; urgency=low
 
   * Initial release.
 

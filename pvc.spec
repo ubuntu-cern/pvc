@@ -39,17 +39,25 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root)
 /usr/sbin/pvc
-/usr/share/man/man8
+/usr/sbin/changelog
+/usr/sbin/mod
+/usr/share/man/man8/pvc.8.gz
+/usr/share/man/man8/changelog.8.gz
+/usr/share/man/man8/mod.8.gz
 %doc /usr/share/doc/%{name}-%{version}/README
 %doc /usr/share/doc/%{name}-%{version}/COPYING
 
 %files -n apt-pvc
 %defattr(-,root,root)
 /usr/sbin/apt-pvc
-/usr/share/man/man8
+/usr/share/man/man8/apt-pvc.8.gz
 
 %post
 
 %changelog
+* Mon Nov  3 2008  KELEMEN Peter <Peter.Kelemen@gmail.com> 1.0-2
+- Add missing changelog(8) and mod(8) symlinks.
+- Add apt-pvc.8 manpage.
+
 * Sun Nov  2 2008  KELEMEN Peter <Peter.Kelemen@gmail.com> 1.0-1
 - Initial release.
