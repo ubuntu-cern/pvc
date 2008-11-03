@@ -1,2 +1,6 @@
 usr/sbin/pvc
+usr/sbin/changelog
+usr/sbin/mod
 usr/share/man/man8/pvc.8
+usr/share/man/man8/changelog.8
+usr/share/man/man8/mod.8

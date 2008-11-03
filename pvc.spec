@@ -1,6 +1,6 @@
 Summary: Poor man's version control.
 Name: pvc
-Version: 1.1
+Version: 1.2
 Release: 1
 Packager: KELEMEN Peter <Peter.Kelemen@gmail.com>
 License: GPL
@@ -55,6 +55,9 @@ rm -rf %{buildroot}
 %post
 
 %changelog
+* Mon Nov  3 2008  KELEMEN Peter <Peter.Kelemen@gmail.com> 1.2-1
+- Bump version number.
+
 * Mon Nov  3 2008  KELEMEN Peter <Peter.Kelemen@gmail.com> 1.1-1
 - Bump version number.
 
