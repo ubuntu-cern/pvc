@@ -1,12 +1,12 @@
 Summary: Poor man's version control.
 Name: pvc
 Version: 1.2
-Release: 1
+Release: 2
 Packager: KELEMEN Peter <Peter.Kelemen@gmail.com>
 License: GPL
 Group: Applications/System
 
-Requires: bash, net-tools, coreutils, diff, sed
+Requires: bash, net-tools, coreutils, diffutils, sed
 
 BuildArch: noarch
 BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
@@ -55,6 +55,9 @@ rm -rf %{buildroot}
 %post
 
 %changelog
+* Tue Nov 11 2008  FROHNER Akos <akos@frohner.hu> 1.2-2
+- diff is packaged as 'diffutils'
+
 * Mon Nov  3 2008  KELEMEN Peter <Peter.Kelemen@gmail.com> 1.2-1
 - Bump version number.
 
