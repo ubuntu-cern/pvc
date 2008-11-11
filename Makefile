@@ -37,7 +37,7 @@ tar: clean
 	tar cCzf .. $(TAR) $(DIR) --exclude CVS --exclude .git --exclude $(TAR) --exclude $(BUILDDIR) --exclude debian --dereference
 	rm -f ../$(DIR)
 
-rpm: tar
+rpmdir: tar
 	rm -rf $(BUILDDIR)
 	mkdir -p $(BUILDDIR)
 	mkdir -p $(BUILDDIR)/BUILD
@@ -46,7 +46,12 @@ rpm: tar
 	mkdir -p $(BUILDDIR)/SOURCES
 	mkdir -p $(BUILDDIR)/SPECS
 	cp $(TAR) $(BUILDDIR)/SOURCES
+
+srpm: rpmdir
 	rpmbuild --define "_topdir $(PWD)/$(BUILDDIR)" -ts $(TAR)
+
+rpm: rpmdir
+	rpmbuild --define "_topdir $(PWD)/$(BUILDDIR)" -tb $(TAR)
 
 deb: tar
 	mkdir -p $(BUILDDIR)
@@ -55,3 +60,4 @@ deb: tar
 	cp -av debian/ $(BUILDDIR)/$(DIR)
 	(cd $(BUILDDIR)/$(DIR) && dpkg-buildpackage -k9FF0CABE -rfakeroot)
 	rm -r $(BUILDDIR)/$(DIR)
+
