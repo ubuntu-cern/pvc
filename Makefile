@@ -38,7 +38,15 @@ tar: clean
 	rm -f ../$(DIR)
 
 rpm: tar
-	rpmbuild -ts $(TAR)
+	rm -rf $(BUILDDIR)
+	mkdir -p $(BUILDDIR)
+	mkdir -p $(BUILDDIR)/BUILD
+	mkdir -p $(BUILDDIR)/RPMS
+	mkdir -p $(BUILDDIR)/SRPMS
+	mkdir -p $(BUILDDIR)/SOURCES
+	mkdir -p $(BUILDDIR)/SPECS
+	cp $(TAR) $(BUILDDIR)/SOURCES
+	rpmbuild --define "_topdir $(PWD)/$(BUILDDIR)" -ts $(TAR)
 
 deb: tar
 	mkdir -p $(BUILDDIR)
