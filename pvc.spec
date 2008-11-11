@@ -38,7 +38,7 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root)
-/usr/sbin/pvc
+%attr(755,root,root) /usr/sbin/pvc
 /usr/sbin/changelog
 /usr/sbin/mod
 /usr/share/man/man8/pvc.8.gz
@@ -49,7 +49,7 @@ rm -rf %{buildroot}
 
 %files -n apt-pvc
 %defattr(-,root,root)
-/usr/sbin/apt-pvc
+%attr(755,root,root) /usr/sbin/apt-pvc
 /usr/share/man/man8/apt-pvc.8.gz
 
 %post
@@ -57,6 +57,7 @@ rm -rf %{buildroot}
 %changelog
 * Tue Nov 11 2008  FROHNER Akos <akos@frohner.hu> 1.2-2
 - diff is packaged as 'diffutils'
+- adding executable permissions
 
 * Mon Nov  3 2008  KELEMEN Peter <Peter.Kelemen@gmail.com> 1.2-1
 - Bump version number.
