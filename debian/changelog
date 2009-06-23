@@ -1,3 +1,9 @@
+pvc (1.2-2) hardy intrepid jaunty; urgency=low
+
+  * Uploading to Jaunty as well. 
+
+ -- Frohner Ákos <akos@frohner.hu>  Tue, 23 Jun 2009 22:16:53 +0200
+
 pvc (1.2-1) hardy intrepid; urgency=low
 
   * Actually include the symlinks in the package.
