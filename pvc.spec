@@ -1,9 +1,9 @@
 Summary: Poor man's version control.
 Name: pvc
-Version: 1.2
-Release: 2
+Version: 1.3
+Release: 1
 Packager: KELEMEN Peter <Peter.Kelemen@gmail.com>
-License: GPL
+License: GPL2
 Group: Applications/System
 
 Requires: bash, net-tools, coreutils, diffutils, sed
@@ -32,6 +32,8 @@ make
 
 %install
 make DESTDIR=%{buildroot} install
+mkdir -p %{buildroot}/etc/sysconfig
+cp env.sh %{buildroot}/etc/sysconfig/pvc
 
 %clean
 rm -rf %{buildroot}
@@ -46,6 +48,7 @@ rm -rf %{buildroot}
 /usr/share/man/man8/mod.8.gz
 %doc /usr/share/doc/%{name}-%{version}/README
 %doc /usr/share/doc/%{name}-%{version}/COPYING
+%config /etc/sysconfig/pvc
 
 %files -n apt-pvc
 %defattr(-,root,root)
@@ -55,6 +58,9 @@ rm -rf %{buildroot}
 %post
 
 %changelog
+* Sun Dec 20 2009  FROHNER Akos <akos@frohner.hu> 1.3-1
+- default settings in /etc/sysconfig
+
 * Tue Nov 11 2008  FROHNER Akos <akos@frohner.hu> 1.2-2
 - diff is packaged as 'diffutils'
 - adding executable permissions

@@ -46,6 +46,14 @@ then
 		*)    MOD_CHANGELOG_STYLE=append ;;
 	esac
 fi
+# Debian defaults
+if [ -r /etc/default/pvc ]; then
+    . /etc/default/pvc
+fi
+# RedHat defaults
+if [ -r /etc/sysconfig/pvc ]; then
+    . /etc/sysconfig/pvc
+fi
 
 ######################################################################
 ### require

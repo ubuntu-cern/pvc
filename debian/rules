@@ -65,6 +65,8 @@ install-indep:
 	#INSTALLDOC#
 
 	$(MAKE) DESTDIR=$(CURDIR)/debian/tmp install
+	mkdir -p $(CURDIR)/debian/tmp/etc/default
+	cp env.sh $(CURDIR)/debian/tmp/etc/default/pvc
 
 	dh_install -i --sourcedir=debian/tmp -ppvc -Xapt-pvc
 	dh_install -i --sourcedir=debian/tmp -papt-pvc
